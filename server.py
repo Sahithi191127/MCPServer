@@ -88,9 +88,19 @@ def create_email_draft_endpoint(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "google-mcp-server",
+        "runtime": "fastapi",
+        "docs": "/docs",
+        "endpoints": ["/append_to_doc", "/create_email_draft", "/health"],
+    }
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "google-mcp-server", "runtime": "fastapi"}
 
 
 if __name__ == "__main__":

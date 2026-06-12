@@ -17,11 +17,37 @@ CREDENTIALS_FILE = Path(__file__).parent / "credentials.json"
 TOKEN_FILE = Path(__file__).parent / "token.json"
 
 
-def _client_config_from_env() -> dict | None:
-    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+def _parse_json_env(var_name: str) -> dict | list | None:
+    """Parse JSON from an environment variable, tolerating double-encoding."""
+    raw = os.environ.get(var_name)
     if not raw:
         return None
-    return json.loads(raw)
+
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"{var_name} is not valid JSON. Paste the raw file contents "
+            f"without extra wrapping quotes."
+        ) from exc
+
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    return data
+
+
+def _client_config_from_env() -> dict | None:
+    data = _parse_json_env("GOOGLE_CREDENTIALS_JSON")
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        raise ValueError("GOOGLE_CREDENTIALS_JSON must be a JSON object.")
+    return data
 
 
 def _enrich_token_info(token_info: dict) -> dict:
@@ -41,10 +67,12 @@ def _enrich_token_info(token_info: dict) -> dict:
 
 
 def _load_creds_from_env() -> Credentials | None:
-    raw = os.environ.get("GOOGLE_TOKEN_JSON")
-    if not raw:
+    data = _parse_json_env("GOOGLE_TOKEN_JSON")
+    if data is None:
         return None
-    token_info = _enrich_token_info(json.loads(raw))
+    if not isinstance(data, dict):
+        raise ValueError("GOOGLE_TOKEN_JSON must be a JSON object.")
+    token_info = _enrich_token_info(data)
     return Credentials.from_authorized_user_info(token_info, SCOPES)
 
 
