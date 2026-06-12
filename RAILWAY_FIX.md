@@ -2,7 +2,9 @@
 
 ## Problem detected
 
-Your public URL (`passionate-nourishment-production.up.railway.app`) is serving a **NestJS/Node template**, not this Python FastAPI server.
+If your URL returns `Cannot GET /` or NestJS-style errors, the domain is on the **wrong Railway service**.
+
+Your FastAPI service URL: `https://web-production-c5ea8.up.railway.app`
 
 | Signal | NestJS (wrong) | FastAPI (correct) |
 |---|---|---|
@@ -43,3 +45,22 @@ curl -X POST https://YOUR-URL/append_to_doc \
 ```
 
 If you still see `Cannot GET /`, the domain is still pointed at the wrong service.
+
+## Healthcheck failure fix
+
+If deploy fails at **Network > Healthcheck**:
+
+1. Ensure **Builder** is **Dockerfile** (not a Node template).
+2. Do **not** set a custom start command in the Railway UI — `Dockerfile` CMD handles it.
+3. Set these env vars on the **same service** (missing vars cause API 500, not healthcheck fail):
+   - `GOOGLE_TOKEN_JSON` — raw JSON from `token.json` (one line, no extra quotes)
+   - `GOOGLE_CREDENTIALS_JSON` — raw JSON from `credentials.json`
+   - `API_KEY` — from your local `.env`
+   - `REQUIRE_APPROVAL=false`
+4. Redeploy after saving variables.
+
+Verify:
+```bash
+curl https://web-production-c5ea8.up.railway.app/health
+# {"status":"ok","service":"google-mcp-server","runtime":"fastapi"}
+```

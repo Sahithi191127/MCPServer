@@ -4,6 +4,7 @@ import os
 import sys
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -11,6 +12,12 @@ from docs_tool import append_to_doc
 from gmail_tool import create_email_draft
 
 app = FastAPI(title="Google MCP Server", version="1.0.0")
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    port = os.environ.get("PORT", "8000")
+    print(f"google-mcp-server starting on 0.0.0.0:{port}")
 
 API_KEY = os.environ.get("API_KEY")
 REQUIRE_APPROVAL = os.environ.get("REQUIRE_APPROVAL", "true").lower() == "true"
@@ -71,7 +78,7 @@ def append_to_doc_endpoint(
         result = append_to_doc(request.doc_id, request.content)
         return {"status": "success", "result": result}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
 
 @app.post("/create_email_draft")
@@ -85,7 +92,7 @@ def create_email_draft_endpoint(
         result = create_email_draft(request.to, request.subject, request.body)
         return {"status": "success", "result": result}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
 
 @app.get("/")

@@ -9,4 +9,5 @@ COPY auth.py authenticate.py docs_tool.py gmail_tool.py server.py ./
 
 ENV PYTHONUNBUFFERED=1
 
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
+# Railway injects PORT at runtime — must use shell form to expand it
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}"]
