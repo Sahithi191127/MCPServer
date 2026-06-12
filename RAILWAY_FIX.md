@@ -1,67 +1,56 @@
 # Railway Fix Guide
 
-## Problem detected
+## Railway dashboard checklist
 
-If your URL returns `Cannot GET /` or NestJS-style errors, the domain is on the **wrong Railway service**.
+1. **Service:** `web` connected to GitHub repo `Sahithi191127/MCPServer`
+2. **Settings → Build → Builder:** `Nixpacks` (NOT Dockerfile)
+3. **Settings → Deploy → Custom Start Command:** leave **empty** (uses `railway.toml`)
+4. **Variables** (each as separate variable — do NOT upload `.env` as one file):
 
-Your FastAPI service URL: `https://web-production-c5ea8.up.railway.app`
+| Variable | Value |
+|---|---|
+| `GOOGLE_TOKEN_JSON` | Full contents of `token.json` |
+| `GOOGLE_CREDENTIALS_JSON` | Full contents of `credentials.json` |
+| `API_KEY` | Random secret from local `.env` (**not** Groq API key) |
+| `REQUIRE_APPROVAL` | `false` |
 
-| Signal | NestJS (wrong) | FastAPI (correct) |
-|---|---|---|
-| `GET /` | `Cannot GET /` | `{"service":"google-mcp-server",...}` |
-| `GET /docs` | 404 | 200 (Swagger UI) |
-| `POST /append_to_doc` | 404 | 401 without API key |
+5. **Redeploy** the latest commit from Deployments tab.
 
-## Fix in Railway dashboard
+## Verify deployment
 
-1. Open [Railway project](https://railway.com/project/aa0258c6-cd3d-4a53-b9ec-1966b970ea8d).
-2. Check how many **services** exist in the project.
-3. **Delete** or **remove the public domain** from any Node/NestJS/MCP template service.
-4. Select the service connected to **GitHub → Sahithi191127/MCPServer**.
-5. Confirm settings:
-   - **Builder:** Dockerfile (or Nixpacks)
-   - **Start command:** `uvicorn server:app --host 0.0.0.0 --port $PORT`
-6. **Settings → Networking → Generate Domain** on the **Python/GitHub** service only.
-7. Verify env vars on that same service:
-   - `GOOGLE_TOKEN_JSON`
-   - `GOOGLE_CREDENTIALS_JSON`
-   - `API_KEY`
-   - `REQUIRE_APPROVAL=false`
-8. Redeploy.
-
-## Verify correct deployment
-
-```bash
-curl https://YOUR-URL/
-# Must include: "service": "google-mcp-server"
-
-curl https://YOUR-URL/health
-# {"status":"ok","service":"google-mcp-server","runtime":"fastapi"}
-
-curl -X POST https://YOUR-URL/append_to_doc \
-  -H "Content-Type: application/json" \
-  -d '{"doc_id":"x","content":"y"}'
-# Must return 401 (not 404) if API_KEY is set
-```
-
-If you still see `Cannot GET /`, the domain is still pointed at the wrong service.
-
-## Healthcheck failure fix
-
-If deploy fails at **Network > Healthcheck** (Dockerfile builds often fail):
-
-1. Use **Nixpacks** builder (not Dockerfile). This repo uses `Procfile` + `railway.toml`.
-2. In Railway **Settings → Build**, set builder to **Nixpacks** if a Dockerfile option is selected.
-3. Start command: `uvicorn server:app --host 0.0.0.0 --port $PORT`
-4. Set these env vars on the **same service**:
-   - `GOOGLE_TOKEN_JSON` — raw JSON from `token.json` (one line, no extra quotes)
-   - `GOOGLE_CREDENTIALS_JSON` — raw JSON from `credentials.json`
-   - `API_KEY` — from your local `.env`
-   - `REQUIRE_APPROVAL=false`
-4. Redeploy after saving variables.
-
-Verify:
 ```bash
 curl https://web-production-c5ea8.up.railway.app/health
-# {"status":"ok","service":"google-mcp-server","runtime":"fastapi"}
 ```
+
+Success looks like:
+
+```json
+{
+  "status": "ok",
+  "service": "google-mcp-server",
+  "runtime": "fastapi",
+  "config": {
+    "has_google_token": true,
+    "has_google_credentials": true,
+    "has_api_key": true,
+    "require_approval": false
+  }
+}
+```
+
+If `has_google_token` or `has_google_credentials` is `false`, fix Railway variables.
+
+## Test API
+
+```bash
+curl -X POST https://web-production-c5ea8.up.railway.app/create_email_draft \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY_FROM_ENV" \
+  -d '{"to":"you@example.com","subject":"Test","body":"Hello"}'
+```
+
+## If deploy keeps failing
+
+- Remove any **Dockerfile** builder override in Railway UI
+- Delete failed deployments and redeploy commit `e9eec64` pattern: Nixpacks + Procfile only
+- Check **Build Logs** for Python install errors

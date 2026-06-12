@@ -14,11 +14,6 @@ from gmail_tool import create_email_draft
 app = FastAPI(title="Google MCP Server", version="1.0.0")
 
 
-@app.on_event("startup")
-async def startup() -> None:
-    port = os.environ.get("PORT", "8000")
-    print(f"google-mcp-server starting on 0.0.0.0:{port}")
-
 API_KEY = os.environ.get("API_KEY")
 REQUIRE_APPROVAL = os.environ.get("REQUIRE_APPROVAL", "true").lower() == "true"
 
@@ -107,7 +102,17 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "google-mcp-server", "runtime": "fastapi"}
+    return {
+        "status": "ok",
+        "service": "google-mcp-server",
+        "runtime": "fastapi",
+        "config": {
+            "has_google_token": bool(os.environ.get("GOOGLE_TOKEN_JSON")),
+            "has_google_credentials": bool(os.environ.get("GOOGLE_CREDENTIALS_JSON")),
+            "has_api_key": bool(API_KEY),
+            "require_approval": REQUIRE_APPROVAL,
+        },
+    }
 
 
 if __name__ == "__main__":
