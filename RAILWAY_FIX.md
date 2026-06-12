@@ -48,11 +48,12 @@ If you still see `Cannot GET /`, the domain is still pointed at the wrong servic
 
 ## Healthcheck failure fix
 
-If deploy fails at **Network > Healthcheck**:
+If deploy fails at **Network > Healthcheck** (Dockerfile builds often fail):
 
-1. Ensure **Builder** is **Dockerfile** (not a Node template).
-2. Do **not** set a custom start command in the Railway UI — `Dockerfile` CMD handles it.
-3. Set these env vars on the **same service** (missing vars cause API 500, not healthcheck fail):
+1. Use **Nixpacks** builder (not Dockerfile). This repo uses `Procfile` + `railway.toml`.
+2. In Railway **Settings → Build**, set builder to **Nixpacks** if a Dockerfile option is selected.
+3. Start command: `uvicorn server:app --host 0.0.0.0 --port $PORT`
+4. Set these env vars on the **same service**:
    - `GOOGLE_TOKEN_JSON` — raw JSON from `token.json` (one line, no extra quotes)
    - `GOOGLE_CREDENTIALS_JSON` — raw JSON from `credentials.json`
    - `API_KEY` — from your local `.env`
