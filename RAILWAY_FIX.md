@@ -11,7 +11,8 @@
 |---|---|
 | `GOOGLE_TOKEN_JSON` | Full contents of `token.json` |
 | `GOOGLE_CREDENTIALS_JSON` | Full contents of `credentials.json` |
-| `API_KEY` | Random secret from local `.env` (**not** Groq API key) |
+| `API_KEY` | Random secret from local `.env` (protects your server endpoints) |
+| `GROQ_API_KEY` | Your Groq API key from [console.groq.com](https://console.groq.com) |
 | `REQUIRE_APPROVAL` | `false` |
 
 5. **Redeploy** the latest commit from Deployments tab.
@@ -33,6 +34,7 @@ Success looks like:
     "has_google_token": true,
     "has_google_credentials": true,
     "has_api_key": true,
+    "has_groq_api_key": true,
     "require_approval": false
   }
 }

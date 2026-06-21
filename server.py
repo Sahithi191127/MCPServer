@@ -1,5 +1,6 @@
 """FastAPI server exposing Google Docs and Gmail tools."""
 
+import config  # noqa: F401 — load .env before reading os.environ
 import json
 import os
 import sys
@@ -11,9 +12,9 @@ import uvicorn
 
 from docs_tool import append_to_doc
 from gmail_tool import create_email_draft
+from groq_tool import chat, run_assistant
 
 app = FastAPI(title="Google MCP Server", version="1.0.0")
-
 
 API_KEY = os.environ.get("API_KEY")
 REQUIRE_APPROVAL = os.environ.get("REQUIRE_APPROVAL", "true").lower() == "true"
@@ -28,6 +29,16 @@ class CreateEmailDraftRequest(BaseModel):
     to: str
     subject: str
     body: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    model: str | None = None
+
+
+class AssistantRequest(BaseModel):
+    message: str
+    model: str | None = None
 
 
 def verify_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")) -> None:
@@ -91,13 +102,47 @@ def create_email_draft_endpoint(
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
 
+@app.post("/chat")
+def chat_endpoint(
+    request: ChatRequest,
+    _: None = Depends(verify_api_key),
+):
+    try:
+        reply = chat(request.message, model=request.model or "llama-3.3-70b-versatile")
+        return {"status": "success", "reply": reply}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
+
+
+@app.post("/assistant")
+def assistant_endpoint(
+    request: AssistantRequest,
+    _: None = Depends(verify_api_key),
+):
+    authorize_action("assistant", request.model_dump())
+
+    try:
+        result = run_assistant(
+            request.message, model=request.model or "llama-3.3-70b-versatile"
+        )
+        return {"status": "success", **result}
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
+
+
 @app.get("/")
 def root():
     return {
         "service": "google-mcp-server",
         "runtime": "fastapi",
         "docs": "/docs",
-        "endpoints": ["/append_to_doc", "/create_email_draft", "/health"],
+        "endpoints": [
+            "/append_to_doc",
+            "/create_email_draft",
+            "/chat",
+            "/assistant",
+            "/health",
+        ],
     }
 
 
@@ -138,6 +183,7 @@ def health():
             "google_token_usable": google_token_usable,
             "google_token_error": google_token_error,
             "has_api_key": bool(API_KEY),
+            "has_groq_api_key": bool(os.environ.get("GROQ_API_KEY")),
             "require_approval": REQUIRE_APPROVAL,
         },
     }
