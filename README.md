@@ -55,7 +55,24 @@ Place your downloaded `credentials.json` in the project root (same folder as `se
 
 ## First-Time Authentication
 
+### Local development
+
 On the first API call, a browser window opens for Google OAuth login. After you approve access, a `token.json` file is created automatically. Subsequent runs reuse this token (refreshing it when expired).
+
+### Railway / production (`GOOGLE_TOKEN_JSON`)
+
+Railway requires a token with a **`refresh_token`**. Generate it locally:
+
+```bash
+# Revoke old access first if re-authenticating:
+# https://myaccount.google.com/permissions
+
+python authenticate.py
+```
+
+Copy the **entire** `token.json` contents into Railway variable `GOOGLE_TOKEN_JSON`, then redeploy.
+
+`GET /health` reports `has_refresh_token` and `google_token_usable` so WeeklyPulse can fail fast before long runs.
 
 **Do not commit `credentials.json` or `token.json`.** They are listed in `.gitignore`.
 
@@ -123,4 +140,5 @@ google-mcp-server/
 | `credentials.json not found` | Download OAuth credentials from Google Cloud Console |
 | `403 Access Not Configured` | Enable Docs and Gmail APIs in your GCP project |
 | `invalid_grant` on token refresh | Delete `token.json` and re-authenticate |
+| `missing fields refresh_token` on Railway | Run `python authenticate.py`, paste full `token.json` into `GOOGLE_TOKEN_JSON` |
 | Approval prompt not visible | Run the server in a foreground terminal, not as a background service |

@@ -66,6 +66,17 @@ def _enrich_token_info(token_info: dict) -> dict:
     return enriched
 
 
+def _validate_token_info(token_info: dict) -> None:
+    """Require refresh_token for tokens loaded from env (Railway / headless)."""
+    if not token_info.get("refresh_token"):
+        raise ValueError(
+            "GOOGLE_TOKEN_JSON is missing refresh_token. "
+            "Run `python authenticate.py` in the MCPServer repo locally "
+            "(revoke the app at https://myaccount.google.com/permissions first if "
+            "re-authenticating), then paste the full token.json into Railway."
+        )
+
+
 def _load_creds_from_env() -> Credentials | None:
     data = _parse_json_env("GOOGLE_TOKEN_JSON")
     if data is None:
@@ -73,6 +84,7 @@ def _load_creds_from_env() -> Credentials | None:
     if not isinstance(data, dict):
         raise ValueError("GOOGLE_TOKEN_JSON must be a JSON object.")
     token_info = _enrich_token_info(data)
+    _validate_token_info(token_info)
     return Credentials.from_authorized_user_info(token_info, SCOPES)
 
 
@@ -103,7 +115,7 @@ def _run_local_oauth_flow() -> Credentials:
             "GOOGLE_CREDENTIALS_JSON."
         )
 
-    return flow.run_local_server(port=0, prompt="consent")
+    return flow.run_local_server(port=0, prompt="consent", access_type="offline")
 
 
 def get_credentials() -> Credentials:

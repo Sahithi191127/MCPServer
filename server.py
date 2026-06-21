@@ -1,5 +1,6 @@
 """FastAPI server exposing Google Docs and Gmail tools."""
 
+import json
 import os
 import sys
 
@@ -102,13 +103,40 @@ def root():
 
 @app.get("/health")
 def health():
+    has_refresh_token = False
+    google_token_usable = False
+    google_token_error: str | None = None
+
+    raw_token = os.environ.get("GOOGLE_TOKEN_JSON", "").strip()
+    if raw_token:
+        try:
+            token_data = json.loads(raw_token)
+            if isinstance(token_data, str):
+                token_data = json.loads(token_data)
+            if isinstance(token_data, dict):
+                has_refresh_token = bool(token_data.get("refresh_token"))
+        except json.JSONDecodeError:
+            google_token_error = "GOOGLE_TOKEN_JSON is not valid JSON"
+
+    if not google_token_error:
+        try:
+            from auth import get_credentials
+
+            creds = get_credentials()
+            google_token_usable = bool(creds.valid)
+        except Exception as exc:
+            google_token_error = str(exc)
+
     return {
         "status": "ok",
         "service": "google-mcp-server",
         "runtime": "fastapi",
         "config": {
-            "has_google_token": bool(os.environ.get("GOOGLE_TOKEN_JSON")),
+            "has_google_token": bool(raw_token),
             "has_google_credentials": bool(os.environ.get("GOOGLE_CREDENTIALS_JSON")),
+            "has_refresh_token": has_refresh_token,
+            "google_token_usable": google_token_usable,
+            "google_token_error": google_token_error,
             "has_api_key": bool(API_KEY),
             "require_approval": REQUIRE_APPROVAL,
         },
